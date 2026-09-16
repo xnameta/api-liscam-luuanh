@@ -12,11 +12,14 @@ class StorageManager:
             "imagekit": ImageKitStorage(),
         }
 
+        # Thứ tự ưu tiên cho ảnh
         self.image_providers = [
             "freeimage",
             "imgbb",
+            "imagekit",
         ]
 
+        # Video dùng ImageKit
         self.video_providers = [
             "imagekit",
         ]
@@ -31,14 +34,12 @@ class StorageManager:
 
         return provider
 
-    def select_provider(self, content_type: str):
+    def get_candidates(self, content_type: str):
         if content_type.startswith("image/"):
-            for name in self.image_providers:
-                return name
+            return self.image_providers.copy()
 
         if content_type.startswith("video/"):
-            for name in self.video_providers:
-                return name
+            return self.video_providers.copy()
 
         raise ValueError(
             f"Không hỗ trợ loại media: {content_type}"
@@ -51,27 +52,55 @@ class StorageManager:
         content_type: str,
         provider: str | None = None,
     ):
-        if provider is None:
-            provider = self.select_provider(content_type)
+        # Nếu người dùng chỉ định provider
+        if provider:
+            storage = self.get_provider(provider)
 
-        storage = self.get_provider(provider)
+            return await storage.upload(
+                file_bytes=file_bytes,
+                filename=filename,
+                content_type=content_type,
+            )
 
-        result = await storage.upload(
-            file_bytes=file_bytes,
-            filename=filename,
-            content_type=content_type,
+        # Tự động chọn provider + fallback
+        candidates = self.get_candidates(content_type)
+
+        errors = []
+
+        for name in candidates:
+            storage = self.get_provider(name)
+
+            try:
+                result = await storage.upload(
+                    file_bytes=file_bytes,
+                    filename=filename,
+                    content_type=content_type,
+                )
+
+                return result
+
+            except Exception as e:
+                errors.append(
+                    f"{name}: {str(e)}"
+                )
+
+        raise RuntimeError(
+            "Tất cả storage provider đều thất bại: "
+            + " | ".join(errors)
         )
-
-        return result
 
     async def delete(
         self,
         file_id: str,
         provider: str,
+        delete_reference: str | None = None,
     ):
         storage = self.get_provider(provider)
 
-        return await storage.delete(file_id)
+        return await storage.delete(
+            file_id=file_id,
+            delete_reference=delete_reference,
+        )
 
     async def get_info(
         self,
@@ -88,6 +117,7 @@ class StorageManager:
         for name, provider in self.providers.items():
             try:
                 results[name] = await provider.health_check()
+
             except Exception as e:
                 results[name] = {
                     "provider": name,
