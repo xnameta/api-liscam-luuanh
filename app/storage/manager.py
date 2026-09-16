@@ -1,4 +1,5 @@
 from app.storage.imgbb import ImgBBStorage
+from app.storage.freeimage import FreeImageStorage
 from app.storage.imagekit import ImageKitStorage
 
 
@@ -6,9 +7,19 @@ class StorageManager:
 
     def __init__(self):
         self.providers = {
-    "imgbb": ImgBBStorage(),
-    "imagekit": ImageKitStorage(),
-}
+            "imgbb": ImgBBStorage(),
+            "freeimage": FreeImageStorage(),
+            "imagekit": ImageKitStorage(),
+        }
+
+        self.image_providers = [
+            "freeimage",
+            "imgbb",
+        ]
+
+        self.video_providers = [
+            "imagekit",
+        ]
 
     def get_provider(self, name: str):
         provider = self.providers.get(name)
@@ -20,13 +31,29 @@ class StorageManager:
 
         return provider
 
+    def select_provider(self, content_type: str):
+        if content_type.startswith("image/"):
+            for name in self.image_providers:
+                return name
+
+        if content_type.startswith("video/"):
+            for name in self.video_providers:
+                return name
+
+        raise ValueError(
+            f"Không hỗ trợ loại media: {content_type}"
+        )
+
     async def upload(
         self,
         file_bytes: bytes,
         filename: str,
         content_type: str,
-        provider: str = "imgbb",
+        provider: str | None = None,
     ):
+        if provider is None:
+            provider = self.select_provider(content_type)
+
         storage = self.get_provider(provider)
 
         result = await storage.upload(
