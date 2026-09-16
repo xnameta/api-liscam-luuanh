@@ -12,9 +12,6 @@ class ImgBBStorage(StorageProvider):
         filename: str,
         content_type: str
     ):
-        if not IMGBB_API_KEY:
-            raise RuntimeError("IMGBB_API_KEY chưa được cấu hình")
-
         files = {
             "image": (
                 filename,
@@ -39,7 +36,7 @@ class ImgBBStorage(StorageProvider):
         result = response.json()
 
         if not result.get("success"):
-            raise RuntimeError("ImgBB upload thất bại")
+            raise Exception("ImgBB upload failed")
 
         image = result["data"]
 
@@ -49,16 +46,32 @@ class ImgBBStorage(StorageProvider):
             "url": image.get("url"),
             "display_url": image.get("display_url"),
             "thumbnail_url": image.get("thumb", {}).get("url"),
-            "delete_url": image.get("delete_url"),
+            "delete_reference": image.get("delete_url"),
             "width": image.get("width"),
             "height": image.get("height"),
-            "size": image.get("size")
+            "size": image.get("size"),
+            "mime_type": content_type,
+            "filename": filename,
         }
 
     async def delete(self, file_id: str):
-        # ImgBB trả delete_url theo từng file.
-        # Có thể bổ sung cơ chế quản lý delete_url sau.
+        # ImgBB dùng delete URL được trả về lúc upload.
+        # Sẽ hoàn thiện cơ chế xóa ở bước Storage Manager.
         return {
-            "success": False,
-            "message": "Chưa triển khai delete cho ImgBB"
+            "provider": "imgbb",
+            "file_id": file_id,
+            "deleted": False,
+            "message": "Delete handler will be completed in the next step"
+        }
+
+    async def get_info(self, file_id: str):
+        return {
+            "provider": "imgbb",
+            "provider_file_id": file_id
+        }
+
+    async def health_check(self):
+        return {
+            "provider": "imgbb",
+            "status": "configured" if IMGBB_API_KEY else "not_configured"
         }
