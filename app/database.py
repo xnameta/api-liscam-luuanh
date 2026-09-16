@@ -1,11 +1,14 @@
 import secrets
 import sqlite3
 from datetime import datetime, timezone
+from pathlib import Path
 
 from app.config import PUBLIC_API_URL
 
 
-DATABASE_PATH = "liscam.db"
+# Luôn lưu database ngay tại thư mục gốc của project
+BASE_DIR = Path(__file__).resolve().parent.parent
+DATABASE_PATH = str(BASE_DIR / "liscam.db")
 
 
 def get_connection():
@@ -30,6 +33,7 @@ def init_db():
     conn.execute("""
         CREATE TABLE IF NOT EXISTS media (
             id TEXT PRIMARY KEY,
+            owner_token_id INTEGER NOT NULL,
             provider TEXT NOT NULL,
             provider_file_id TEXT,
             delete_reference TEXT,
@@ -41,13 +45,21 @@ def init_db():
             height INTEGER,
             duration REAL,
             created_at TEXT NOT NULL,
-            expires_at TEXT NOT NULL
+            expires_at TEXT NOT NULL,
+
+            FOREIGN KEY (owner_token_id)
+                REFERENCES api_tokens(id)
         )
     """)
 
     conn.execute("""
         CREATE INDEX IF NOT EXISTS idx_media_expires_at
         ON media(expires_at)
+    """)
+
+    conn.execute("""
+        CREATE INDEX IF NOT EXISTS idx_media_owner
+        ON media(owner_token_id)
     """)
 
     conn.commit()
@@ -59,7 +71,7 @@ def create_token(name="liscam-app"):
 
     conn = get_connection()
 
-    conn.execute(
+    cursor = conn.execute(
         """
         INSERT INTO api_tokens
         (token, name, active, created_at)
@@ -74,20 +86,27 @@ def create_token(name="liscam-app"):
     )
 
     conn.commit()
+
+    token_id = cursor.lastrowid
+
     conn.close()
 
-    return token
+    return {
+        "id": token_id,
+        "token": token,
+        "name": name,
+    }
 
 
-def verify_token(token):
+def get_token(token):
     if not token:
-        return False
+        return None
 
     conn = get_connection()
 
     row = conn.execute(
         """
-        SELECT id
+        SELECT *
         FROM api_tokens
         WHERE token = ?
         AND active = 1
@@ -97,11 +116,19 @@ def verify_token(token):
 
     conn.close()
 
-    return row is not None
+    if row is None:
+        return None
+
+    return dict(row)
+
+
+def verify_token(token):
+    return get_token(token) is not None
 
 
 def save_media(
     media_id,
+    owner_token_id,
     provider,
     provider_file_id,
     delete_reference,
@@ -121,6 +148,7 @@ def save_media(
         """
         INSERT INTO media (
             id,
+            owner_token_id,
             provider,
             provider_file_id,
             delete_reference,
@@ -134,10 +162,11 @@ def save_media(
             created_at,
             expires_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             media_id,
+            owner_token_id,
             provider,
             provider_file_id,
             delete_reference,
@@ -177,6 +206,27 @@ def get_media(media_id):
     return dict(row)
 
 
+def get_media_for_owner(media_id, owner_token_id):
+    conn = get_connection()
+
+    row = conn.execute(
+        """
+        SELECT *
+        FROM media
+        WHERE id = ?
+        AND owner_token_id = ?
+        """,
+        (media_id, owner_token_id),
+    ).fetchone()
+
+    conn.close()
+
+    if row is None:
+        return None
+
+    return dict(row)
+
+
 def delete_media(media_id):
     conn = get_connection()
 
@@ -190,6 +240,27 @@ def delete_media(media_id):
 
     conn.commit()
     conn.close()
+
+
+def delete_media_for_owner(media_id, owner_token_id):
+    conn = get_connection()
+
+    cursor = conn.execute(
+        """
+        DELETE FROM media
+        WHERE id = ?
+        AND owner_token_id = ?
+        """,
+        (media_id, owner_token_id),
+    )
+
+    conn.commit()
+
+    deleted = cursor.rowcount > 0
+
+    conn.close()
+
+    return deleted
 
 
 def get_expired_media():
