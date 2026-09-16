@@ -8,16 +8,23 @@ class StorageProvider(ABC):
         self,
         file_bytes: bytes,
         filename: str,
-        content_type: str
+        content_type: str,
     ):
         pass
 
     @abstractmethod
-    async def delete(self, file_id: str):
+    async def delete(
+        self,
+        file_id: str,
+        delete_reference: str | None = None,
+    ):
         pass
 
     @abstractmethod
-    async def get_info(self, file_id: str):
+    async def get_info(
+        self,
+        file_id: str,
+    ):
         pass
 
     @abstractmethod
