@@ -6,8 +6,9 @@ class StorageManager:
 
     def __init__(self):
         self.providers = {
-            "imgbb": ImgBBStorage(),
-        }
+    "imgbb": ImgBBStorage(),
+    "imagekit": ImageKitStorage(),
+}
 
     def get_provider(self, name: str):
         provider = self.providers.get(name)
