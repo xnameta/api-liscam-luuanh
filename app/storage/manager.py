@@ -1,4 +1,5 @@
 from app.storage.imgbb import ImgBBStorage
+from app.storage.imagekit import ImageKitStorage
 
 
 class StorageManager:
