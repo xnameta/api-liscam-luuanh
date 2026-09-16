@@ -1,66 +1,49 @@
 import os
+
 from dotenv import load_dotenv
+
 
 load_dotenv()
 
-# =========================
-# LISCAM PUBLIC API
-# =========================
 
 PUBLIC_API_URL = os.getenv(
     "PUBLIC_API_URL",
-    "http://127.0.0.1:8000"
-).rstrip("/")
+    "http://127.0.0.1:8000",
+).strip().rstrip("/")
 
-
-# =========================
-# ImgBB
-# =========================
 
 IMGBB_API_KEY = os.getenv(
     "IMGBB_API_KEY",
-    ""
+    "",
 ).strip()
 
 IMGBB_UPLOAD_URL = os.getenv(
     "IMGBB_UPLOAD_URL",
-    "https://api.imgbb.com/1/upload"
+    "https://api.imgbb.com/1/upload",
 ).strip()
 
 
-# =========================
-# ImageKit
-# =========================
-
 IMAGEKIT_PRIVATE_KEY = os.getenv(
     "IMAGEKIT_PRIVATE_KEY",
-    ""
+    "",
 ).strip()
 
 IMAGEKIT_UPLOAD_URL = os.getenv(
     "IMAGEKIT_UPLOAD_URL",
-    "https://upload.imagekit.io/api/v1/files/upload"
+    "https://upload.imagekit.io/api/v1/files/upload",
 ).strip()
 
 
-# =========================
-# FreeImage.host
-# =========================
-
 FREEIMAGE_API_KEY = os.getenv(
     "FREEIMAGE_API_KEY",
-    ""
+    "",
 ).strip()
 
 FREEIMAGE_UPLOAD_URL = os.getenv(
     "FREEIMAGE_UPLOAD_URL",
-    "https://freeimage.host/api/1/upload"
+    "https://freeimage.host/api/1/upload",
 ).strip()
 
-
-# =========================
-# Configuration status
-# =========================
 
 def provider_config():
     return {
