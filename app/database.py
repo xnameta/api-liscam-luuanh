@@ -80,7 +80,6 @@ def create_token(name="liscam-app"):
         (
             token,
             name,
-            1,
             datetime.now(timezone.utc).isoformat(),
         ),
     )
